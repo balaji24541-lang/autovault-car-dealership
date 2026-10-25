@@ -2,18 +2,18 @@ import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
+from contextlib import asynccontextmanager
 import jwt
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, model_validator
 from pwdlib import PasswordHash
-from sqlalchemy import create_engine, String, Numeric, Integer, ForeignKey, select, or_
+from sqlalchemy import create_engine, String, Numeric, Integer, ForeignKey, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./dealership.db')
-JWT_SECRET = os.getenv('JWT_SECRET', 'local-dev-only-change-this-secret')
 engine = create_engine(DATABASE_URL, connect_args={'check_same_thread': False} if DATABASE_URL.startswith('sqlite') else {})
 SessionLocal = sessionmaker(bind=engine)
 password_hash = PasswordHash.recommended()
@@ -50,24 +50,41 @@ class VehicleInput(BaseModel):
     category: str = Field(min_length=1, max_length=80)
     price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     quantity: int = Field(ge=0)
+
+    @model_validator(mode='after')
+    def validate_text_fields(self):
+        for name in ('make', 'model', 'category'):
+            if not getattr(self, name).strip():
+                raise ValueError(f'{name} must not be blank')
+        return self
+
 class VehicleOutput(VehicleInput):
     id: int
     model_config = ConfigDict(from_attributes=True)
 class StockInput(BaseModel):
     quantity: int = Field(gt=0)
 
-app = FastAPI(title='Car Dealership Inventory API', version='1.0.0')
-app.add_middleware(CORSMiddleware, allow_origins=os.getenv('CORS_ORIGINS','http://localhost:5173').split(','), allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+def jwt_secret():
+    secret = os.getenv('JWT_SECRET', '')
+    if len(secret.encode('utf-8')) < 32:
+        raise RuntimeError('JWT_SECRET must contain at least 32 bytes')
+    return secret
 
-@app.on_event('startup')
-def startup(): Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app):
+    jwt_secret()
+    Base.metadata.create_all(bind=engine)
+    yield
+
+app = FastAPI(title='Car Dealership Inventory API', version='1.0.0', lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=os.getenv('CORS_ORIGINS','http://localhost:5173').split(','), allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 def db_session():
     with SessionLocal() as db: yield db
 
 def current_user(auth: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(db_session)):
     try:
-        data = jwt.decode(auth.credentials, JWT_SECRET, algorithms=['HS256'])
+        data = jwt.decode(auth.credentials, jwt_secret(), algorithms=['HS256'])
         user = db.get(User, int(data['sub']))
     except (jwt.PyJWTError, ValueError, KeyError):
         raise HTTPException(401, 'Invalid or expired token')
@@ -98,7 +115,7 @@ def login(body: Credentials, db: Session = Depends(db_session)):
     user = db.scalar(select(User).where(User.email == str(body.email).lower()))
     if not user or not password_hash.verify(body.password, user.password_hash):
         raise HTTPException(401, 'Invalid credentials')
-    token = jwt.encode({'sub':str(user.id), 'exp':datetime.now(timezone.utc)+timedelta(hours=2)}, JWT_SECRET, algorithm='HS256')
+    token = jwt.encode({'sub':str(user.id), 'exp':datetime.now(timezone.utc)+timedelta(hours=2)}, jwt_secret(), algorithm='HS256')
     return {'access_token':token,'token_type':'bearer','role':user.role}
 
 @app.get('/api/vehicles', response_model=list[VehicleOutput])
@@ -107,6 +124,8 @@ def vehicles(db: Session = Depends(db_session), user: User = Depends(current_use
 
 @app.get('/api/vehicles/search', response_model=list[VehicleOutput])
 def search(make: Optional[str]=None, model: Optional[str]=None, category: Optional[str]=None, min_price: Optional[Decimal]=Query(None,ge=0), max_price: Optional[Decimal]=Query(None,ge=0), db: Session=Depends(db_session), user: User=Depends(current_user)):
+    if min_price is not None and max_price is not None and min_price > max_price:
+        raise HTTPException(422, 'min_price must be less than or equal to max_price')
     q = select(Vehicle)
     if make: q=q.where(Vehicle.make.ilike(f'%{make}%'))
     if model: q=q.where(Vehicle.model.ilike(f'%{model}%'))

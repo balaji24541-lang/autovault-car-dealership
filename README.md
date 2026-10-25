@@ -1,62 +1,164 @@
-# AutoVault — Car Dealership Inventory System
+# AutoVault Car Dealership Inventory System
 
-A full-stack car inventory application with customer registration/login, JWT authentication, vehicle filtering, purchasing, and admin inventory management.
+AutoVault is a full stack vehicle inventory demo. Customers can create accounts, browse and filter inventory, and record a purchase that decrements stock. Administrators can add, edit, delete, and restock vehicles. A purchase records an inventory action; it does not charge money.
 
-## Stack
-- Backend: FastAPI, SQLAlchemy, PostgreSQL, JWT, Argon2
-- Frontend: React, TypeScript, Vite, Tailwind CSS
-- Tests: pytest, FastAPI TestClient, Vitest
+## Features
 
-## Quick start (Docker)
-1. Copy `.env.example` to `.env` and replace `JWT_SECRET` with a strong random value.
-2. Run `docker compose up --build`.
-3. Open http://localhost:5173. API docs: http://localhost:8000/docs.
+- JWT login and customer registration with Argon2 password hashing.
+- Vehicle listing and case insensitive make, model, and category search, with price bounds.
+- Admin inventory management and customer purchase access.
+- SQLAlchemy persistence with PostgreSQL in Docker Compose (SQLite is the local fallback).
+- Stock decrement uses a conditional database update so concurrent requests cannot reduce stock below zero.
+- React interface with inventory totals, responsive vehicle cards, filters, loading/error states, and admin forms.
 
-## Local setup (without Docker)
-1. Start a PostgreSQL server and create an empty database.
-2. `cd backend && python -m venv .venv` and activate it (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` on macOS/Linux).
-3. `pip install -r requirements.txt`.
-4. Set `DATABASE_URL` to your PostgreSQL URL (example: `postgresql+psycopg://user:password@localhost:5432/dealership`) and set a strong `JWT_SECRET`.
-5. `uvicorn app.main:app --reload`.
-6. In a separate terminal: `cd frontend && npm install && npm run dev`.
+## Technology and architecture
 
-## Admin account
-Public registration always creates customer accounts. To provision a local admin, register an account through the UI and run the following SQL against your **local development database**:
+- Backend: Python, FastAPI, Pydantic, SQLAlchemy, PyJWT, pwdlib/Argon2.
+- Frontend: React, TypeScript, Vite, Tailwind CSS, Vitest, React Testing Library.
+- Database: PostgreSQL 16 in Compose; SQLite by default for local backend use.
+- `frontend/src/App.tsx` calls the REST API. FastAPI validates JWTs and roles before database operations. SQLAlchemy maps users, vehicles, and purchases.
+
+```text
+backend/app/main.py       API, schemas, auth, database models, inventory operations
+backend/tests/            Pytest API and security regression tests
+frontend/src/             React UI and Vitest tests
+docker-compose.yml        PostgreSQL, API, and frontend services
+screenshots/              Actual app screenshots (not yet captured in this environment)
+PROMPTS.md                AI prompt and conversation provenance
+TEST_REPORT.md            Environment-specific verification record
+```
+
+## Prerequisites
+
+- Python 3.11 or newer and pip.
+- Node.js 20 or newer and npm.
+- PostgreSQL 16 for a local database, or Docker Desktop with Compose for containers.
+
+## Docker Compose
+
+1. Copy `.env.example` to `.env`.
+2. Replace `JWT_SECRET` with at least 32 random bytes. For example, generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+3. For a non-demo deployment, replace the PostgreSQL demo credentials too and restrict network access.
+4. Run `docker compose up -d --build`.
+5. Visit the frontend at <http://localhost:5173> and the API docs at <http://localhost:8000/docs>. PostgreSQL is published on port 5433 for local tools.
+6. Stop services with `docker compose down`. Persistent data remains in the `postgres_data` volume. Do not use `docker compose down -v` unless you intend to erase that data.
+
+Compose requires `JWT_SECRET`; the API refuses to start with a secret shorter than 32 bytes. `.env.example` uses a conspicuous placeholder and is not a production secret.
+
+## Run locally without Docker
+
+### Backend
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+$env:DATABASE_URL = 'postgresql+psycopg://USER:PASSWORD@localhost:5432/dealership'
+$env:JWT_SECRET = 'replace-with-at-least-32-random-bytes'
+uvicorn app.main:app --reload
+```
+
+For quick local evaluation without PostgreSQL, omit `DATABASE_URL`; the API uses `backend/dealership.db` (SQLite). Never use the example secret for a deployed service.
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Set `VITE_API_URL` if the API is not at `http://localhost:8000`.
+
+## Configuration
+
+| Variable | Purpose | Required |
+| --- | --- | --- |
+| `JWT_SECRET` | HS256 signing secret, at least 32 UTF-8 bytes | Yes |
+| `DATABASE_URL` | SQLAlchemy database URL | No (SQLite default) |
+| `CORS_ORIGINS` | Comma-separated allowed browser origins | No (`http://localhost:5173`) |
+| `VITE_API_URL` | API base URL for the frontend | No (`http://localhost:8000`) |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose database configuration | No (demo defaults; replace for deployment) |
+
+## API
+
+All vehicle endpoints require `Authorization: Bearer <access_token>`. Login tokens expire after two hours.
+
+| Method and path | Access | Description |
+| --- | --- | --- |
+| `POST /api/auth/register` | Public | Register a customer account; role assignment from request data is ignored. |
+| `POST /api/auth/login` | Public | Verify credentials and return a JWT and role. |
+| `GET /api/vehicles` | Customer or admin | List inventory. |
+| `GET /api/vehicles/search` | Customer or admin | Filter by `make`, `model`, `category`, `min_price`, and `max_price`. |
+| `POST /api/vehicles` | Admin | Add a vehicle. |
+| `PUT /api/vehicles/{id}` | Admin | Replace vehicle fields. |
+| `DELETE /api/vehicles/{id}` | Admin | Delete a vehicle. |
+| `POST /api/vehicles/{id}/purchase` | Customer or admin | Decrement stock and record a purchase, or return conflict if out of stock. |
+| `POST /api/vehicles/{id}/restock` | Admin | Increase stock by a positive quantity. |
+
+Prices must be positive and have at most two decimal places. Quantities cannot be negative. Missing vehicles return 404, invalid data returns 422, duplicate registration returns 409, bad credentials/token returns 401, and customer attempts at admin routes return 403.
+
+## Accounts and permissions
+
+Public registration always creates a customer. The app intentionally has no public admin registration or default admin credentials. To create a local demo admin, first register normally, then update that account in your local development database:
+
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'your-admin@example.com';
 ```
-Log out and log in again to receive the admin role in the login response. Never expose public role assignment.
 
-## Endpoints
-- `POST /api/auth/register`, `POST /api/auth/login`
-- `GET /api/vehicles`, `GET /api/vehicles/search`
-- `POST /api/vehicles` (admin)
-- `PUT /api/vehicles/{id}` (admin)
-- `DELETE /api/vehicles/{id}` (admin)
-- `POST /api/vehicles/{id}/purchase` (authenticated)
-- `POST /api/vehicles/{id}/restock` (admin)
+Log in again to receive a token containing the updated role. Do not expose this database operation as a public endpoint. For a real deployment, provision admin accounts through a controlled operator process.
 
-All vehicle routes require `Authorization: Bearer <token>`. Search supports `make`, `model`, `category`, `min_price`, `max_price`. Stock decrements use an atomic conditional SQL UPDATE to prevent overselling.
+## Tests and current verification
 
-## Tests
-Backend: `cd backend && pytest -v --disable-warnings`
-Frontend: `cd frontend && npm test`
-Coverage (optional): `pip install pytest-cov && pytest --cov=app --cov-report=term-missing`.
+Run backend checks from `backend/`:
 
-## Test report
-See `TEST_REPORT.md` for verification status. Do not report tests as passed unless executed in your environment.
+```bash
+python -m pytest -v
+python -m pytest --cov=app --cov-report=term-missing
+```
+
+Run frontend checks from `frontend/`:
+
+```bash
+npm test -- --run
+npm run build
+```
+
+Docker checks: `docker compose config`, `docker compose up -d --build`, and `docker compose ps`. Actual results from this workspace are recorded in [TEST_REPORT.md](TEST_REPORT.md). No passing result is claimed where dependencies or Docker were unavailable.
 
 ## Screenshots
-Add actual screenshots of the login screen, customer dashboard, and admin inventory screen under `screenshots/` after running the app. Screenshots are not included as real execution evidence in this initial delivery.
 
-## My AI Usage
-**Tool:** ChatGPT (OpenAI).
+The `screenshots/` folder currently contains capture instructions only. It has no fabricated application images. Capture the login page, registration page, customer inventory and filters, admin inventory and add form, and a purchase flow against a running local app before submission.
 
-**How:** ChatGPT generated the initial backend, frontend, Docker, documentation and test scaffolding from the supplied kata. The developer must review, run, test, refine, and take responsibility for every change. Do not claim the code or TDD history was written manually when it was AI-generated.
+## Known limitations and future work
 
-**Reflection:** AI accelerates initial implementation and suggests edge cases, but cannot replace independently running tests, checking security, reviewing concurrency behavior, or producing authentic red/green/refactor commits. Update this reflection with your actual experience before submission.
+- Purchases only update inventory; there is no payment integration, cart, or purchase history UI.
+- Tables are created at application startup; schema migrations are not configured.
+- Admin provisioning currently requires controlled database access.
+- The frontend relies on local storage for the session and role display; backend authorization remains authoritative.
+- Add database migrations, rate limiting, HTTPS deployment, managed secrets, refresh/session management, and browser end-to-end testing before production use.
 
-**Commit co-authorship:** For every AI-assisted commit, append `Co-authored-by: ChatGPT <AI@users.noreply.github.com>` after two newline characters. Do not manufacture a red/green/refactor commit history; run failing tests first during subsequent changes and commit real evidence.
+## Repository
 
-## Before production
-Add database migrations, rate limiting, HTTPS, managed secrets, refresh-token/session strategy, and real end-to-end browser tests. This is a kata starter, not a production-certified payment system; purchasing decrements stock and does not charge money.
+<https://github.com/balaji24541-lang/autovault-car-dealership>
+
+# My AI Usage
+
+**AI tools used:**
+- ChatGPT
+- OpenAI Codex in VS Code
+
+**How AI was used:**
+- Initial project scaffolding.
+- FastAPI and React implementation assistance.
+- Debugging Docker and PostgreSQL issues.
+- Authentication and authorization debugging.
+- Automated test generation and improvements.
+- Security review.
+- Documentation assistance.
+- Code refactoring.
+
+**Human involvement:** The developer configured and ran Docker, tested the application locally, inspected results, configured Git, and pushed the repository, as stated in the supplied project brief. This local finalization pass could not independently verify those earlier actions in the current environment.
+
+**Reflection:** AI accelerated scaffolding, implementation suggestions, and test/documentation work. Verification was necessary because generated code can miss security and edge cases, and the results depend on the actual runtime environment. Human review and repeatable tests remain important; this workspace could not execute the test suites because dependencies were absent and network access was blocked.

@@ -36,3 +36,42 @@ def test_restock_admin_only(client,admin,customer,vehicle):
 def test_validation(client,admin,vehicle):
     assert client.post('/api/vehicles',json={**vehicle,'price':-1},headers=admin).status_code==422
     assert client.post('/api/vehicles',json={**vehicle,'quantity':-2},headers=admin).status_code==422
+
+def test_search_rejects_inverted_price_range(client,admin):
+    response=client.get('/api/vehicles/search?min_price=50000&max_price=10000',headers=admin)
+    assert response.status_code==422
+
+def test_customers_can_search_and_cannot_restock(client,admin,customer,vehicle):
+    created=client.post('/api/vehicles',json=vehicle,headers=admin)
+    vehicle_id=created.json()['id']
+    assert client.get('/api/vehicles/search?model=Cam',headers=customer).status_code==200
+    assert client.post(f'/api/vehicles/{vehicle_id}/restock',json={'quantity':1},headers=customer).status_code==403
+
+def test_registration_never_accepts_client_role(client):
+    response=client.post('/api/auth/register',json={'email':'role@example.com','password':'Password123','role':'admin'})
+    assert response.status_code==201
+    login=client.post('/api/auth/login',json={'email':'role@example.com','password':'Password123'})
+    assert login.json()['role']=='customer'
+
+def test_startup_rejects_short_jwt_secret(monkeypatch):
+    import pytest
+    from fastapi.testclient import TestClient
+    from app.main import app
+    monkeypatch.setenv('JWT_SECRET', 'too-short')
+    with pytest.raises(RuntimeError, match='at least 32 bytes'):
+        with TestClient(app):
+            pass
+
+def test_vehicle_listing_returns_inventory(client,admin,vehicle):
+    assert client.post('/api/vehicles',json=vehicle,headers=admin).status_code==201
+    response=client.get('/api/vehicles',headers=admin)
+    assert response.status_code==200
+    assert response.json()[0]['model']=='Camry'
+
+def test_malformed_bearer_token_is_rejected(client):
+    response=client.get('/api/vehicles',headers={'Authorization':'Bearer not-a-valid-jwt'})
+    assert response.status_code==401
+
+def test_blank_vehicle_text_and_missing_restock_are_rejected(client,admin,vehicle):
+    assert client.post('/api/vehicles',json={**vehicle,'make':'  '},headers=admin).status_code==422
+    assert client.post('/api/vehicles/999/restock',json={'quantity':1},headers=admin).status_code==404

@@ -1,6 +1,6 @@
 import os
 os.environ['DATABASE_URL']='sqlite:///./test_dealership.db'
-os.environ['JWT_SECRET']='test-secret-only'
+os.environ['JWT_SECRET']='test-secret-only-at-least-32-bytes-long'
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app, Base, engine, SessionLocal, User, password_hash
