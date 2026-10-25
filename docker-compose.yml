@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dealership
+      POSTGRES_USER: dealership
+      POSTGRES_PASSWORD: dealership_dev
+    ports: ['5433:5432']
+    volumes: ['postgres_data:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U dealership']
+      interval: 5s
+      retries: 10
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://dealership:dealership_dev@db:5432/dealership
+      JWT_SECRET: ${JWT_SECRET:-change-me-before-deploying}
+      CORS_ORIGINS: http://localhost:5173
+    ports: ['8000:8000']
+    depends_on:
+      db:
+        condition: service_healthy
+  frontend:
+    build: ./frontend
+    ports: ['5173:5173']
+    depends_on: [backend]
+volumes:
+  postgres_data:

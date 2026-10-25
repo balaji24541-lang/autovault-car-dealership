@@ -1,0 +1,1 @@
+Capture authentic screenshots after starting the app: login.png, inventory.png, admin.png. Do not substitute mockups for actual screenshots.
