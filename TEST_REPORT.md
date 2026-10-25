@@ -48,6 +48,7 @@ UI tests cover auth rendering, registration/login and login errors, logout, vehi
 - `docker compose ps`: backend and frontend are running; PostgreSQL is healthy.
 - PostgreSQL accepted connections. After verification and screenshot cleanup, the persistent database contains 1 user, 4 vehicles, and 2 purchases, matching the original counts. No volume was removed or reset.
 - Persistence was verified across Compose container recreation and a backend restart. A labeled demo purchase persisted, then only the temporary screenshot users, their purchase, and three `DEMONSTRATION ONLY` vehicles were removed. Existing rows were left unchanged.
+- A live PostgreSQL concurrency check sent 12 simultaneous purchases against a temporary vehicle with stock 5: 5 requests returned 200, 7 returned 409, final quantity was 0, and exactly 5 purchase rows were written. The temporary user, vehicle, and purchase rows were then removed; original row counts returned to 1 user, 4 vehicles, and 2 purchases.
 - `/openapi.json` returned HTTP 200 and the frontend returned HTTP 200. Playwright/Edge exercised customer login, inventory loading, filtering, purchasing, admin login, and the add form against the running Compose application.
 
 ## Screenshots
