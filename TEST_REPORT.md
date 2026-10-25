@@ -3,72 +3,78 @@
 ## Environment
 
 - Date: 2026-10-25.
-- OS/shell: Windows, PowerShell.
-- Python 3.11.9, pytest 9.1.1, FastAPI 0.162.0, SQLAlchemy 2.1.6.
-- Node.js 22.20.0, npm 10.9.3, Vitest 2.1.9, React Testing Library 16.x.
-- Backend automated tests use SQLite and FastAPI TestClient. A PostgreSQL service was not available for integration testing.
+- Windows PowerShell, Python 3.11.9, pytest 9.1.1, FastAPI 0.162.0, SQLAlchemy 2.1.6.
+- Node.js 22.20.0, npm 10.9.3, Vite 6.4.5, Vitest 2.1.9, React Testing Library 16.x.
+- API tests use SQLite and FastAPI TestClient. Docker verification uses PostgreSQL 16 in the Compose stack.
 
 ## Backend tests
 
-Commands, run from `backend/`:
+Run from `backend/`:
 
 ```text
 python -m pytest -v
-15 passed in 4.07s
+15 passed in 4.14s
 
 python -m pytest --cov=app --cov-report=term-missing
-15 passed in 4.59s
+15 passed in 4.16s
 app/main.py: 148 statements, 0 missed, 100% statement coverage
 TOTAL: 100%
 ```
 
-The final sequential runs passed. An earlier attempt to run both backend commands at once caused a transient shared SQLite test-database collision; it was rerun sequentially and is not part of the final result.
+The final test runs completed without warnings. Regression tests cover authentication, customer/admin permissions, role escalation, vehicle listing and search, invalid values, purchases, restocking, and short or malformed JWTs.
 
 ## Frontend tests and build
 
-Commands, run from `frontend/`:
+Run from `frontend/`:
 
 ```text
+npm test -- --run
+1 test file passed; 14 tests passed
+
 npm run test:coverage
 1 test file passed; 14 tests passed
 Statements: 100%; branches: 97.22%; functions: 91.66%; lines: 100%
 
 npm run build
-TypeScript check passed; Vite production build passed
+TypeScript check passed; Vite 6.4.5 production build passed
 ```
 
-Vitest and React Testing Library cover auth rendering, registration/login success and login errors, logout, vehicle data and totals, search/category/minimum/maximum filters, empty and failed inventory states, stock-zero disabled purchase, successful purchase refresh, customer/admin control visibility, and admin add/edit/delete/restock flows.
+UI tests cover auth rendering, registration/login and login errors, logout, vehicle cards and totals, make/model/category/price filters, empty and failed inventory states, stock-zero purchase behavior, successful purchase refresh, customer/admin visibility, and admin add/edit/delete/restock actions.
 
-## API and security summary
+## Docker, PostgreSQL, and API
 
-- Registration and login, role-protected vehicle CRUD, listing/search, purchase, and restock are exercised by backend tests.
-- Added regression coverage for customers searching inventory, customers denied admin actions, registration role escalation, inverted price ranges, and short JWT secrets.
-- Vehicle input rejects negative price/quantity and blank make/model/category. Purchase uses a conditional atomic database update (`quantity > 0`) and returns conflict when stock is unavailable.
-- The test suite verifies sequential oversell prevention. No live PostgreSQL or concurrent multi-connection integration test was possible in this environment; concurrency behavior is supported by the conditional SQL update but remains to be exercised against PostgreSQL.
-- JWT secret is now required at startup and must be at least 32 UTF-8 bytes. Password hashing uses Argon2. Public registration always sets the customer role.
-- FastAPI startup uses lifespan. The observed Starlette/httpx deprecation was resolved by installing and declaring Starlette's recommended `httpx2` TestClient dependency. Final backend test output had no warnings.
+- `docker compose config`: passed using the ignored local `.env` secret.
+- `docker compose up -d --build`: passed after adding `frontend/.dockerignore` and rebuilding with Vite 6.4.5.
+- `docker compose ps`: backend and frontend are running; PostgreSQL is healthy.
+- PostgreSQL accepted connections. After verification and screenshot cleanup, the persistent database contains 1 user, 4 vehicles, and 2 purchases, matching the original counts. No volume was removed or reset.
+- Persistence was verified across Compose container recreation and a backend restart. A labeled demo purchase persisted, then only the temporary screenshot users, their purchase, and three `DEMONSTRATION ONLY` vehicles were removed. Existing rows were left unchanged.
+- `/openapi.json` returned HTTP 200 and the frontend returned HTTP 200. Playwright/Edge exercised customer login, inventory loading, filtering, purchasing, admin login, and the add form against the running Compose application.
 
-## Docker and running application
+## Screenshots
 
-- `docker compose config --quiet`: passed when supplied a temporary test-only `JWT_SECRET`. Docker printed a warning that its user configuration file under `C:\Users\spide\.docker` was inaccessible to this sandbox.
-- `docker compose up -d --build`: could not run because access to the Docker engine named pipe was denied. `docker compose ps`, live health/API checks, database persistence checks, and frontend-to-backend checks could therefore not be performed.
-- No browser session was available against a running app. No screenshots were generated. `screenshots/` contains capture instructions only.
+Genuine Edge screenshots driven by Playwright Core are in `screenshots/`:
 
-## Dependency audit and remaining warnings
+- `login.png`, `registration.png`
+- `inventory.png`, `search-filter.png`
+- `admin-dashboard.png`, `add-vehicle.png`
+- `purchase.png`
 
-- `npm audit`: reports 10 vulnerabilities in frontend development/build dependencies (6 moderate, 1 high, 3 critical). `npm audit fix` applied non-breaking updates, but the remaining advisories require major tooling upgrades (including Vite/Tailwind/Vitest) according to npm. No forced major upgrade was applied because it could change the existing build/UI stack; review and resolve these before production use.
-- `npm install` also reported a deprecated `whatwg-encoding` package; the v8 coverage install reported deprecated `glob` 10.5.0.
-- Docker CLI access warnings are environment restrictions, not application output.
+The displayed demo records are marked `DEMONSTRATION ONLY`. Screenshot-only accounts and inventory were cleaned from PostgreSQL after capture.
 
-## TDD and records
+## Dependency security audit
 
-Regression tests were added before implementing their corresponding backend and UI changes. Dependencies were initially unavailable, so the expected failing RED assertions could not be run or committed before implementation. No fabricated RED result or historical commit was created. The final local commit records the combined, tested result; the assignment's strict failing-test-per-commit history is not fully satisfied.
+- Applied the non-forced compatible npm updates and upgraded direct Vite to 6.4.5; the Vite peer compatibility was checked, and the test suite and production build pass.
+- `npm audit` still reports **10 findings: 6 moderate, 1 high, 3 critical**. Affected packages include `@vitest/coverage-v8`, `@vitest/mocker`, `vitest`, `vite-node`, `tinypool`, nested `vite`/`esbuild`, `tailwindcss`, `postcss-nested`, and `postcss-selector-parser`. The direct Vite dependency is 6.4.5; remaining Vite advisories are through the older test-tool dependency tree.
+- `npm audit --omit=dev` reports 0 findings. The Compose frontend currently installs dev dependencies to run Vite, so the remaining findings still exist in the development/test toolchain used by that container.
+- npm reports that clearing the remaining findings requires major toolchain changes. An attempt to update Vitest and its coverage provider to 4.1.12 failed in npm's resolver with `Cannot read properties of null (reading 'edgesOut')`; the tested manifest and lock were retained. No `npm audit fix --force` was run.
+- Remaining install/build warnings include deprecated `whatwg-encoding` and `glob` packages. The frontend security findings need a deliberate follow-up migration.
 
-`PROMPTS.md` preserves the existing authentic prompt fragment, marks missing earlier transcripts as TODOs, and includes the exact current Codex task prompt supplied by the developer. It does not invent AI responses. Obtain and paste/link the original unedited chat exports before submission if required.
+## AI records and TDD
 
-## Known limitations and conclusion
+- `README.md` contains the required **My AI Usage** section and distinguishes the supplied account of earlier developer work from actions verified during this finalization.
+- `PROMPTS.md` preserves the available original prompt fragment, records both supplied Codex prompts verbatim, and leaves TODOs for missing authentic ChatGPT/Codex conversation exports. No AI responses or conversation logs were invented.
+- Tests were authored before corresponding improvements, but missing dependencies prevented observing and committing RED failures before implementation. No historical commits or failing results were fabricated. The required strict RED/GREEN/REFACTOR commit sequence remains unverified.
 
-- No PostgreSQL concurrency/integration run, live Docker deployment, browser screenshots, or API health request was possible because Docker Engine access was denied.
-- Earlier ChatGPT logs are incomplete and still require authentic raw exports or links.
-- Frontend dev/build dependency audit findings remain unresolved pending a deliberate tooling migration.
-- The local implementation, API/UI regression suites, coverage, and production frontend build pass. The project is **not ready for final submission yet** because screenshots, original chat records, Docker/PostgreSQL verification, strict RED/GREEN commit evidence, and dependency-advisory remediation remain outstanding.
+## Conclusion and remaining work
+
+Docker/PostgreSQL startup, persistence, API connectivity, frontend-to-backend flows, screenshots, automated tests, and the production build have been verified. The original database counts were preserved. The project still needs authentic earlier AI conversation exports, a deliberate frontend toolchain migration to resolve the full npm audit findings, and genuine RED/GREEN/REFACTOR evidence if the assignment requires it. Until those items are addressed, this is **not yet ready for final submission**.

@@ -471,3 +471,55 @@ TODO: add an unedited Codex session export or public conversation link if requir
 ## Additional AI tools
 
 No other AI tools or original conversation records were provided for this session. TODO: document any additional tool conversations with authentic raw exports or links.
+
+### Codex continuation prompt (verbatim)
+
+```text
+Continue finalizing my existing AutoVault Car Dealership Inventory System.
+
+The code updates have already been committed, and backend and frontend tests pass. Do not rebuild the project or repeat completed work.
+
+Complete these remaining tasks:
+
+1. **Docker/PostgreSQL verification**
+   - Run `docker compose config`.
+   - Run `docker compose up -d --build`.
+   - Verify all three services are healthy or running.
+   - Check PostgreSQL connectivity and database persistence.
+   - Verify frontend-to-backend communication.
+   - Preserve existing Docker volumes and data.
+   - If Docker is unavailable, report the limitation rather than claiming verification succeeded.
+2. **Frontend dependency security**
+   - Run `npm audit` inside the frontend environment.
+   - Identify vulnerabilities and affected packages.
+   - Apply compatible security updates.
+   - Avoid `npm audit fix --force` unless I explicitly approve breaking changes.
+   - Re-run frontend tests and the production build.
+   - Document any unresolved vulnerabilities.
+3. **Application screenshots**
+   - If browser automation is available, capture genuine screenshots of the running application.
+   - Include login, registration, vehicle inventory, search, and admin management.
+   - Save screenshots in `screenshots/`.
+   - Update README.md to display the screenshots.
+   - Never generate fake application screenshots.
+   - If browser access is unavailable, give me manual screenshot instructions.
+4. **AI transparency**
+   - Review the README.md section titled "My AI Usage".
+   - Review the root PROMPTS.md.
+   - Preserve actual AI conversations.
+   - Do not fabricate or summarize conversations as raw logs.
+   - Add placeholders for any original conversations I must supply manually.
+5. **Final verification**
+   - Run backend tests and coverage.
+   - Run frontend tests.
+   - Run the frontend production build.
+   - Update TEST_REPORT.md with actual results.
+   - Check for committed secrets.
+   - Review Git changes.
+   - Create honest, descriptive commits with AI co-authorship trailers.
+   - Do not push to GitHub without my approval.
+
+At the end, provide a checklist showing PASS, FAIL, or MANUAL ACTION REQUIRED for every assignment requirement.
+
+Continue implementing and verifying everything possible without stopping after the planning stage.
+```

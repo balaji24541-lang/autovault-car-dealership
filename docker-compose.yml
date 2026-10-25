@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-dealership}
       POSTGRES_USER: ${POSTGRES_USER:-dealership}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dealership_dev}
     ports: ['5433:5432']
     volumes: ['postgres_data:/var/lib/postgresql/data']
     healthcheck:
@@ -14,7 +14,7 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dealership}:${POSTGRES_PASSWORD:-local-dev-only}@db:5432/${POSTGRES_DB:-dealership}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dealership}:${POSTGRES_PASSWORD:-dealership_dev}@db:5432/${POSTGRES_DB:-dealership}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env to at least 32 random bytes}
       CORS_ORIGINS: http://localhost:5173
     ports: ['8000:8000']

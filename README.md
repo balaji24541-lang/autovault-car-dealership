@@ -122,14 +122,43 @@ Run frontend checks from `frontend/`:
 
 ```bash
 npm test -- --run
+npm run test:coverage
 npm run build
 ```
 
-Docker checks: `docker compose config`, `docker compose up -d --build`, and `docker compose ps`. Actual results from this workspace are recorded in [TEST_REPORT.md](TEST_REPORT.md). No passing result is claimed where dependencies or Docker were unavailable.
+Docker checks: `docker compose config`, `docker compose up -d --build`, and `docker compose ps`. Actual results and remaining audit findings from this workspace are recorded in [TEST_REPORT.md](TEST_REPORT.md).
 
 ## Screenshots
 
-The `screenshots/` folder currently contains capture instructions only. It has no fabricated application images. Capture the login page, registration page, customer inventory and filters, admin inventory and add form, and a purchase flow against a running local app before submission.
+These are genuine captures from the running Compose application using Playwright Core with Microsoft Edge. The displayed screenshot records were clearly labeled `DEMONSTRATION ONLY`; temporary demo users, vehicles, and the purchase test row were removed after capture. Existing inventory records were preserved.
+
+### Login
+
+![AutoVault login page](screenshots/login.png)
+
+### Registration
+
+![AutoVault registration page](screenshots/registration.png)
+
+### Vehicle inventory
+
+![Vehicle inventory showing demonstration-only vehicles](screenshots/inventory.png)
+
+### Search and filter
+
+![Vehicle search filtered to a demonstration-only roadster](screenshots/search-filter.png)
+
+### Admin inventory
+
+![Admin inventory management showing demonstration-only vehicles](screenshots/admin-dashboard.png)
+
+### Add vehicle form
+
+![Admin add vehicle form](screenshots/add-vehicle.png)
+
+### Purchase
+
+![Successful purchase and updated demonstration stock](screenshots/purchase.png)
 
 ## Known limitations and future work
 
@@ -159,6 +188,6 @@ The `screenshots/` folder currently contains capture instructions only. It has n
 - Documentation assistance.
 - Code refactoring.
 
-**Human involvement:** The developer configured and ran Docker, tested the application locally, inspected results, configured Git, and pushed the repository, as stated in the supplied project brief. This local finalization pass could not independently verify those earlier actions in the current environment.
+**Human involvement:** The supplied project brief reports that the developer configured and ran Docker, tested the application locally, inspected results, configured Git, and pushed the repository. Those earlier actions cannot be independently verified here. During this finalization pass, Codex ran the tests, brought up the Compose stack, checked the PostgreSQL data, and captured the screenshots. The developer should review the remaining dependency advisories and supply authentic earlier conversation exports.
 
-**Reflection:** AI accelerated scaffolding, implementation suggestions, and test/documentation work. Verification was necessary because generated code can miss security and edge cases, and the results depend on the actual runtime environment. Human review and repeatable tests remain important; this workspace could not execute the test suites because dependencies were absent and network access was blocked.
+**Reflection:** AI accelerated scaffolding, implementation suggestions, test improvements, and documentation. Verification was necessary because generated code can miss security and edge cases; in this finalization, the test runs, PostgreSQL checks, browser flows, and screenshots exposed issues that required corrections. Human review and repeatable tests remain important, especially for the unresolved npm findings and the missing historical conversation exports.
