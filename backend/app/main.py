@@ -13,7 +13,16 @@ from sqlalchemy import create_engine, String, Numeric, Integer, ForeignKey, sele
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./dealership.db')
+def database_url():
+    """Normalize hosted PostgreSQL URLs for the psycopg 3 SQLAlchemy driver."""
+    url = os.getenv('DATABASE_URL', 'sqlite:///./dealership.db')
+    if url.startswith('postgres://'):
+        return 'postgresql+psycopg://' + url[len('postgres://'):]
+    if url.startswith('postgresql://'):
+        return 'postgresql+psycopg://' + url[len('postgresql://'):]
+    return url
+
+DATABASE_URL = database_url()
 engine = create_engine(DATABASE_URL, connect_args={'check_same_thread': False} if DATABASE_URL.startswith('sqlite') else {})
 SessionLocal = sessionmaker(bind=engine)
 password_hash = PasswordHash.recommended()
@@ -77,7 +86,13 @@ async def lifespan(app):
     yield
 
 app = FastAPI(title='Car Dealership Inventory API', version='1.0.0', lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=os.getenv('CORS_ORIGINS','http://localhost:5173').split(','), allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+def allowed_origins():
+    origins = [origin.strip().rstrip('/') for origin in os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',') if origin.strip()]
+    if not origins or '*' in origins:
+        raise RuntimeError('CORS_ORIGINS must contain explicit browser origins; wildcard origins are not allowed')
+    return origins
+
+app.add_middleware(CORSMiddleware, allow_origins=allowed_origins(), allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 def db_session():
     with SessionLocal() as db: yield db

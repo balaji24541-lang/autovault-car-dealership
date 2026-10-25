@@ -75,3 +75,19 @@ def test_malformed_bearer_token_is_rejected(client):
 def test_blank_vehicle_text_and_missing_restock_are_rejected(client,admin,vehicle):
     assert client.post('/api/vehicles',json={**vehicle,'make':'  '},headers=admin).status_code==422
     assert client.post('/api/vehicles/999/restock',json={'quantity':1},headers=admin).status_code==404
+
+def test_hosted_postgres_urls_use_psycopg_driver(monkeypatch):
+    from app.main import database_url
+    monkeypatch.setenv('DATABASE_URL', 'postgres://demo:password@db.example.test:5432/autovault')
+    assert database_url() == 'postgresql+psycopg://demo:password@db.example.test:5432/autovault'
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://demo:password@db.example.test:5432/autovault')
+    assert database_url() == 'postgresql+psycopg://demo:password@db.example.test:5432/autovault'
+
+def test_cors_origins_are_explicit_and_trimmed(monkeypatch):
+    from app.main import allowed_origins
+    monkeypatch.setenv('CORS_ORIGINS', ' https://autovault.example , https://preview.example/ ')
+    assert allowed_origins() == ['https://autovault.example', 'https://preview.example']
+    monkeypatch.setenv('CORS_ORIGINS', '*')
+    import pytest
+    with pytest.raises(RuntimeError, match='wildcard origins'):
+        allowed_origins()

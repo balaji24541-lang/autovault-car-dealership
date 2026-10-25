@@ -2,6 +2,17 @@
 
 AutoVault is a full stack vehicle inventory demo. Customers can create accounts, browse and filter inventory, and record a purchase that decrements stock. Administrators can add, edit, delete, and restock vehicles. A purchase records an inventory action; it does not charge money.
 
+> **Live Demo:** Deployment is pending owner approval; there is no verified public URL yet. See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared Vercel and Render configuration.
+
+## Demo Access
+
+After deployment, evaluators can sign in with the public, non-sensitive demo accounts:
+
+- **Customer:** `demo.customer@example.com` / `AutoVault-Demo-Customer-2026!`
+- **Admin:** `demo.admin@example.com` / `AutoVault-Demo-Admin-2026!`
+
+The credentials are for this demo only. The admin account can modify demonstration inventory. The automated backend seed creates these accounts and sample vehicles idempotently on startup; it never resets an existing password or changes an existing role. These credentials belong in backend-only Render settings, never Vercel or frontend source. The public demo is not deployed yet; publishing it requires owner approval and connected hosting accounts.
+
 ## Features
 
 - JWT login and customer registration with Argon2 password hashing.
@@ -23,6 +34,9 @@ backend/app/main.py       API, schemas, auth, database models, inventory operati
 backend/tests/            Pytest API and security regression tests
 frontend/src/             React UI and Vitest tests
 docker-compose.yml        PostgreSQL, API, and frontend services
+render.yaml               Render API and PostgreSQL Blueprint
+frontend/vercel.json      Vercel Vite build settings
+DEPLOYMENT.md             Hosting setup and verification instructions
 screenshots/              Actual app screenshots (not yet captured in this environment)
 PROMPTS.md                AI prompt and conversation provenance
 TEST_REPORT.md            Environment-specific verification record
@@ -69,7 +83,7 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_URL` if the API is not at `http://localhost:8000`.
+For local Vite development, `/api` is proxied to `http://localhost:8000`. Set `VITE_API_URL` to the API origin when building for a remote backend.
 
 ## Configuration
 
@@ -78,7 +92,7 @@ Set `VITE_API_URL` if the API is not at `http://localhost:8000`.
 | `JWT_SECRET` | HS256 signing secret, at least 32 UTF-8 bytes | Yes |
 | `DATABASE_URL` | SQLAlchemy database URL | No (SQLite default) |
 | `CORS_ORIGINS` | Comma-separated allowed browser origins | No (`http://localhost:5173`) |
-| `VITE_API_URL` | API base URL for the frontend | No (`http://localhost:8000`) |
+| `VITE_API_URL` | Public API origin for the frontend build; unset uses same-origin `/api` and the local Vite proxy | No |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose database configuration | No (demo defaults; replace for deployment) |
 
 ## API
@@ -164,9 +178,9 @@ These are genuine captures from the running Compose application using Playwright
 
 - Purchases only update inventory; there is no payment integration, cart, or purchase history UI.
 - Tables are created at application startup; schema migrations are not configured.
-- Admin provisioning currently requires controlled database access.
+- The prepared Render deployment seeds demo customer/admin accounts from backend-only environment settings.
 - The frontend relies on local storage for the session and role display; backend authorization remains authoritative.
-- Add database migrations, rate limiting, HTTPS deployment, managed secrets, refresh/session management, and browser end-to-end testing before production use.
+- Add database migrations, rate limiting, refresh/session management, and browser end-to-end testing before production use. The public demo deployment is pending owner approval.
 
 ## Repository
 

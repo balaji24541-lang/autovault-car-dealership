@@ -79,3 +79,18 @@ The displayed demo records are marked `DEMONSTRATION ONLY`. Screenshot-only acco
 ## Conclusion and remaining work
 
 Docker/PostgreSQL startup, persistence, API connectivity, frontend-to-backend flows, screenshots, automated tests, and the production build have been verified. The original database counts were preserved. The project still needs authentic earlier AI conversation exports, a deliberate frontend toolchain migration to resolve the full npm audit findings, and genuine RED/GREEN/REFACTOR evidence if the assignment requires it. Until those items are addressed, this is **not yet ready for final submission**.
+
+## Deployment preparation verification (2026-10-25)
+
+Deployment configuration was prepared locally only. No GitHub push, Vercel/Render login, hosting resource creation, deployment, or public URL was performed because the owner explicitly required approval before those actions.
+
+- `python -m pytest -v`: **18 passed** (3.47 seconds).
+- `python -m pytest --cov=app --cov-report=term-missing`: **18 passed**; `app/main.py` 100% statement coverage; overall backend package coverage **95%** (`app/seed_demo.py` 77%).
+- `npm.cmd test -- --run`: **14 passed**.
+- `npm.cmd run build`: TypeScript check and Vite 6.4.5 production build passed.
+- `docker compose config`: passed; the existing `postgres_data` named volume remains configured. This validates local Compose syntax only; it is not a Render/PostgreSQL deployment check.
+- New backend regressions cover Render-style PostgreSQL URL normalization, strict explicit CORS origins, and repeatable demo seeding that does not reset inventory.
+- The Render Blueprint and Vercel project configuration have not been applied or validated against authenticated provider accounts. No live API, hosted database persistence, or production browser flow is claimed.
+- The public demo credentials in README/DEPLOYMENT are intentionally non-sensitive demo-only values. JWT/database credentials are configured in Render and must never be copied to Vercel or committed.
+
+Deployment remains **MANUAL ACTION REQUIRED**: approve a GitHub push and provider provisioning, authenticate by the providers' GitHub/OAuth flow, choose whether the temporary 30-day free Render database is acceptable or select a paid plan yourself, then use [DEPLOYMENT.md](DEPLOYMENT.md). Add a real Live Demo URL only after the public flows are verified.

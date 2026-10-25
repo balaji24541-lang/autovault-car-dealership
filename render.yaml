@@ -1,0 +1,32 @@
+databases:
+  - name: autovault-db
+    databaseName: autovault
+    user: autovault
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: autovault-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.seed_demo && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: autovault-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DEMO_CUSTOMER_EMAIL
+        sync: false
+      - key: DEMO_CUSTOMER_PASSWORD
+        sync: false
+      - key: DEMO_ADMIN_EMAIL
+        sync: false
+      - key: DEMO_ADMIN_PASSWORD
+        sync: false

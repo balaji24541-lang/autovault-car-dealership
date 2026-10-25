@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';import {CarFront,Search,LogOut,Plus,ShieldCheck,ShoppingBag,SlidersHorizontal,Trash2,Pencil,PackagePlus} from 'lucide-react';
 type Vehicle={id:number;make:string;model:string;category:string;price:string;quantity:number};
 type FormVehicle=Omit<Vehicle,'id'>;
- const API=import.meta.env.VITE_API_URL||'http://localhost:8000';
+ const API=(import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 const blank:FormVehicle={make:'',model:'',category:'Sedan',price:'',quantity:0};
 async function request(path:string,token:string,method='GET',body?:unknown){const response=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});if(!response.ok){const error=await response.json().catch(()=>({detail:'Request failed'}));throw Error(typeof error.detail==='string'?error.detail:JSON.stringify(error.detail));}return response.status===204?null:response.json();}
 export default function App(){
