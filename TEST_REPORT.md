@@ -78,11 +78,11 @@ The displayed demo records are marked `DEMONSTRATION ONLY`. Screenshot-only acco
 
 ## Conclusion and remaining work
 
-Docker/PostgreSQL startup, persistence, API connectivity, frontend-to-backend flows, screenshots, automated tests, and the production build have been verified. The original database counts were preserved. The project still needs authentic earlier AI conversation exports, a deliberate frontend toolchain migration to resolve the full npm audit findings, and genuine RED/GREEN/REFACTOR evidence if the assignment requires it. Until those items are addressed, this is **not yet ready for final submission**.
+The local backend/frontend automated test results and Docker/PostgreSQL checks above remain as recorded. Historical missing conversation exports and the listed npm audit findings remain documented limitations; they are separate from the live deployment smoke observations below.
 
-## Deployment preparation verification (2026-10-25)
+## Deployment preparation verification (2026-10-25, before hosting deployment)
 
-Deployment configuration was prepared locally only. No GitHub push, Vercel/Render login, hosting resource creation, deployment, or public URL was performed because the owner explicitly required approval before those actions.
+At the time of this earlier local verification, deployment configuration was prepared but no hosting resources or public URL existed. The later deployment and smoke observations are recorded separately below.
 
 - `python -m pytest -v`: **18 passed** (3.47 seconds).
 - `python -m pytest --cov=app --cov-report=term-missing`: **18 passed**; `app/main.py` 100% statement coverage; overall backend package coverage **95%** (`app/seed_demo.py` 77%).
@@ -91,6 +91,28 @@ Deployment configuration was prepared locally only. No GitHub push, Vercel/Rende
 - `docker compose config`: passed; the existing `postgres_data` named volume remains configured. This validates local Compose syntax only; it is not a Render/PostgreSQL deployment check.
 - New backend regressions cover Render-style PostgreSQL URL normalization, strict explicit CORS origins, and repeatable demo seeding that does not reset inventory.
 - The Render Blueprint and Vercel project configuration have not been applied or validated against authenticated provider accounts. No live API, hosted database persistence, or production browser flow is claimed.
-- The public demo credentials in README/DEPLOYMENT are intentionally non-sensitive demo-only values. JWT/database credentials are configured in Render and must never be copied to Vercel or committed.
+- Historical security note: the deployment preparation commit included demo passwords in public README/DEPLOYMENT documentation. The current submission documentation removes all passwords and directs the customer credential to be provided privately. Because the earlier commit is already on public GitHub history, rotate the demo admin password through a controlled Render/database operation if it matches the active account; the seeder intentionally does not reset existing account passwords. JWT/database credentials must never be copied to Vercel or committed.
 
-Deployment remains **MANUAL ACTION REQUIRED**: approve a GitHub push and provider provisioning, authenticate by the providers' GitHub/OAuth flow, choose whether the temporary 30-day free Render database is acceptable or select a paid plan yourself, then use [DEPLOYMENT.md](DEPLOYMENT.md). Add a real Live Demo URL only after the public flows are verified.
+## Live deployment smoke check (2026-10-25)
+
+### User-reported manual browser checks
+
+The project owner reports manually verifying the following in the public application:
+
+- Demo customer login succeeded.
+- Three seeded demo vehicles appeared.
+- Purchase confirmation appeared and purchasing reduced vehicle stock.
+- The updated stock remained after refreshing the page.
+
+These are reported manual observations, not automated test results and not independently repeated by Codex. The owner did not report an admin login check in this smoke test.
+
+### Independently checked public endpoints
+
+Read-only HTTP checks run during this documentation update returned:
+
+- `https://autovault-car-dealership.vercel.app/`: HTTP 200.
+- `https://autovault-api-5on9.onrender.com/docs`: HTTP 200.
+- `https://autovault-api-5on9.onrender.com/openapi.json`: HTTP 200.
+- Browser CORS preflight from `https://autovault-car-dealership.vercel.app` to the API vehicle route: HTTP 200, with the exact Vercel origin allowed, credentials allowed, and the `authorization` header allowed.
+
+No login credentials were used in these HTTP checks. Live customer login, inventory purchase, and persistence claims above come from the owner's manual test report. Automated tests remain the local SQLite/React test runs recorded earlier; they do not assert the live Render database state.

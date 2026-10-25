@@ -2,16 +2,19 @@
 
 AutoVault is a full stack vehicle inventory demo. Customers can create accounts, browse and filter inventory, and record a purchase that decrements stock. Administrators can add, edit, delete, and restock vehicles. A purchase records an inventory action; it does not charge money.
 
-> **Live Demo:** Deployment is pending owner approval; there is no verified public URL yet. See [DEPLOYMENT.md](DEPLOYMENT.md) for the prepared Vercel and Render configuration.
+## Live Demo
+
+**[Open the live AutoVault application](https://autovault-car-dealership.vercel.app/)**
+
+The production API is hosted separately at [https://autovault-api-5on9.onrender.com](https://autovault-api-5on9.onrender.com), with interactive [API documentation](https://autovault-api-5on9.onrender.com/docs).
+
+## Try the Application
+
+Open the live link above to use AutoVault in your browser. Evaluators do **not** need to install or run Docker, Python, PostgreSQL, Node.js, or any project code. Sign in with the demo customer account to view and search vehicles, then try a purchase and refresh the page to see the updated inventory. Public registration is enabled; new visitors can also use **Register** to create a customer account.
 
 ## Demo Access
 
-After deployment, evaluators can sign in with the public, non-sensitive demo accounts:
-
-- **Customer:** `demo.customer@example.com` / `AutoVault-Demo-Customer-2026!`
-- **Admin:** `demo.admin@example.com` / `AutoVault-Demo-Admin-2026!`
-
-The credentials are for this demo only. The admin account can modify demonstration inventory. The automated backend seed creates these accounts and sample vehicles idempotently on startup; it never resets an existing password or changes an existing role. These credentials belong in backend-only Render settings, never Vercel or frontend source. The public demo is not deployed yet; publishing it requires owner approval and connected hosting accounts.
+Use the configured demo customer account to sign in. **The password is provided privately by the project owner/interviewer and is intentionally not published in this repository.** If you do not have the credentials, request them from the person who shared the demo. Do not use or share privileged admin credentials; no admin password is published here. The deployed demo account and sample inventory are provisioned by the backend seed process.
 
 ## Features
 
@@ -22,12 +25,14 @@ The credentials are for this demo only. The admin account can modify demonstrati
 - Stock decrement uses a conditional database update so concurrent requests cannot reduce stock below zero.
 - React interface with inventory totals, responsive vehicle cards, filters, loading/error states, and admin forms.
 
-## Technology and architecture
+## Technology and deployment architecture
 
 - Backend: Python, FastAPI, Pydantic, SQLAlchemy, PyJWT, pwdlib/Argon2.
 - Frontend: React, TypeScript, Vite, Tailwind CSS, Vitest, React Testing Library.
 - Database: PostgreSQL 16 in Compose; SQLite by default for local backend use.
 - `frontend/src/App.tsx` calls the REST API. FastAPI validates JWTs and roles before database operations. SQLAlchemy maps users, vehicles, and purchases.
+
+The public React frontend is hosted on **Vercel**. It communicates over **HTTPS** with the **FastAPI** backend hosted on **Render**, which stores account, vehicle, and purchase data in a **Render-managed PostgreSQL** database. The frontend is configured with the public API base URL; database and signing credentials remain backend-only.
 
 ```text
 backend/app/main.py       API, schemas, auth, database models, inventory operations
@@ -37,12 +42,14 @@ docker-compose.yml        PostgreSQL, API, and frontend services
 render.yaml               Render API and PostgreSQL Blueprint
 frontend/vercel.json      Vercel Vite build settings
 DEPLOYMENT.md             Hosting setup and verification instructions
-screenshots/              Actual app screenshots (not yet captured in this environment)
+screenshots/              Genuine screenshots captured from the running application
 PROMPTS.md                AI prompt and conversation provenance
 TEST_REPORT.md            Environment-specific verification record
 ```
 
 ## Prerequisites
+
+No local prerequisites are needed to try the [live application](https://autovault-car-dealership.vercel.app/). The following tools are for developers running the project locally:
 
 - Python 3.11 or newer and pip.
 - Node.js 20 or newer and npm.
@@ -97,6 +104,8 @@ For local Vite development, `/api` is proxied to `http://localhost:8000`. Set `V
 
 ## API
 
+The deployed API is at <https://autovault-api-5on9.onrender.com>. Browse its interactive [Swagger UI](https://autovault-api-5on9.onrender.com/docs) or the OpenAPI schema at <https://autovault-api-5on9.onrender.com/openapi.json>.
+
 All vehicle endpoints require `Authorization: Bearer <access_token>`. Login tokens expire after two hours.
 
 | Method and path | Access | Description |
@@ -115,7 +124,7 @@ Prices must be positive and have at most two decimal places. Quantities cannot b
 
 ## Accounts and permissions
 
-Public registration always creates a customer. The app intentionally has no public admin registration or default admin credentials. To create a local demo admin, first register normally, then update that account in your local development database:
+Public registration always creates a customer. The app has no public admin registration. The deployed demo's privileged account is provisioned separately and its credentials are not published; evaluators should use the demo customer account. To create a local development admin, first register normally, then update that account in your local development database:
 
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'your-admin@example.com';
@@ -144,7 +153,7 @@ Docker checks: `docker compose config`, `docker compose up -d --build`, and `doc
 
 ## Screenshots
 
-These are genuine captures from the running Compose application using Playwright Core with Microsoft Edge. The displayed screenshot records were clearly labeled `DEMONSTRATION ONLY`; temporary demo users, vehicles, and the purchase test row were removed after capture. Existing inventory records were preserved.
+These are genuine captures from the running application using Playwright Core with Microsoft Edge. The displayed screenshot records were clearly labeled `DEMONSTRATION ONLY`; temporary demo users, vehicles, and the purchase test row were removed after capture. Existing inventory records were preserved. Each image below links to the corresponding file in [`screenshots/`](screenshots/).
 
 ### Login
 
@@ -180,7 +189,9 @@ These are genuine captures from the running Compose application using Playwright
 - Tables are created at application startup; schema migrations are not configured.
 - The prepared Render deployment seeds demo customer/admin accounts from backend-only environment settings.
 - The frontend relies on local storage for the session and role display; backend authorization remains authoritative.
-- Add database migrations, rate limiting, refresh/session management, and browser end-to-end testing before production use. The public demo deployment is pending owner approval.
+- The Render free PostgreSQL plan can expire, and free web services may sleep; see [DEPLOYMENT.md](DEPLOYMENT.md) for current deployment notes.
+- Purchases are demonstration inventory operations only; the app has no payment processing.
+- Add database migrations, rate limiting, refresh/session management, and broader browser end-to-end testing before production use.
 
 ## Repository
 
